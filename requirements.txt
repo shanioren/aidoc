@@ -1,0 +1,3 @@
+boto3~=1.35.68
+botocore~=1.35.68
+pydicom~=3.0.1
