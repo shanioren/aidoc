@@ -2,8 +2,8 @@ import json
 import os
 import pydicom
 
-import shared.s3 as s3
-import shared.dicom_db as dicom_db
+import layer.s3 as s3
+import layer.dicom_db as dicom_db
 
 
 def lambda_handler(event, context):

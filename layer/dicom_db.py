@@ -1,6 +1,7 @@
 import boto3
 from botocore.exceptions import ClientError
 
+
 # Initialize DynamoDB resource
 dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 table_name = 'dicom'
@@ -9,6 +10,7 @@ table_name = 'dicom'
 # Insert data into the table
 def insert_item(patient_id, study_date):
     try:
+        print("SHANI YOU CAN DO IT again")
         table = dynamodb.Table(table_name)
         table.put_item(
             Item={
