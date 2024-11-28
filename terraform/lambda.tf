@@ -1,9 +1,3 @@
-# data "archive_file" "lambda_zip" {
-#   type        = "zip"
-#   source_dir  = "../lambda"
-#   output_path = "../lambda.zip"
-# }
-
 data "aws_s3_bucket" "dicom" {
   bucket = "aidoc1"
 }
@@ -55,6 +49,13 @@ resource "aws_iam_role_policy" "shani_lambda_policy" {
             "s3:ListBucket"
           ]
           Resource = "${data.aws_s3_bucket.dicom.arn}/dicom/"
+        },
+        {
+            Effect   = "Allow"
+            Action   = "s3:GetObject"
+            Resource = [
+              "${aws_s3_bucket.lambda_code_bucket.arn}/*"
+            ]
         }
       ]
     })
@@ -66,6 +67,14 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+resource "aws_s3_object" "dummy_lambda_code" {
+  bucket = aws_s3_bucket.lambda_code_bucket.bucket
+  key    = "lambda/lambda.zip"
+  source = data.archive_file.lambda_dummy_zip.output_path
+  acl    = "private"
+#   content_type = "application/zip"
+}
+
 
 # Lambda Function
 resource "aws_lambda_function" "lambda" {
@@ -73,11 +82,12 @@ resource "aws_lambda_function" "lambda" {
   role          = aws_iam_role.lambda_execution_role.arn
   handler       = var.lambda.handler
   runtime       = var.lambda.runtime
-#   filename      = data.archive_file.lambda_zip.output_path
-  filename      = var.lambda.zip_file
+
+  s3_bucket     = aws_s3_bucket.lambda_code_bucket.bucket
+  s3_key        = "lambda/lambda.zip"  # This is the path in your S3 bucket
 
   # Attach the Layer
-  layers = [aws_lambda_layer_version.shared_layer.arn]
+  layers = [aws_lambda_layer_version.lambda_layer.arn]
 }
 
 # Grant S3 permission to invoke Lambda

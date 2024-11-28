@@ -1,8 +1,21 @@
+.PHONY: build clean
+
+build:
+	mkdir -p python
+	pip install -r requirements.txt -t python/
+	cp -r layer python
+	zip -r layer.zip python
+	zip -r lambda.zip lambda
+
+clean:
+	rm -rf python layer.zip lambda.zip
+
+
 # Variables
 AWS_REGION = us-east-1
 S3_BUCKET = shani-lambda-code-bucket
 
-LAYER_NAME = dicom-lambda-layer
+LAYER_NAME = my-lambda-layer
 LAYER_ZIP = layer.zip
 LAYER_S3_KEY = layer/$(LAYER_ZIP)
 
@@ -12,13 +25,11 @@ CODE_S3_KEY = lambda/$(LAMBDA_CODE_ZIP)
 
 LAYER_ARN = $(shell aws lambda list-layer-versions --layer-name $(LAYER_NAME) --region $(AWS_REGION) --query 'LayerVersions[0].LayerVersionArn' --output text)
 
-export AWS_PAGER=""
-
 # Targets
 
 # Default target (run when 'make' is invoked without arguments)
 .PHONY: deploy
-deploy: upload-layer publish-layer upload-function update-lambda clean
+deploy: upload-layer upload-function update-lambda clean
 
 # Upload Lambda Layer to S3
 upload-layer:
@@ -61,4 +72,29 @@ update-lambda:
 # Clean up the generated files
 clean:
 	@echo "Cleaning up generated files..."
-	rm -rf python $(LAYER_ZIP) $(LAMBDA_CODE_ZIP)
+	rm -f $(LAYER_ZIP) $(LAMBDA_CODE_ZIP)
+
+
+aws s3 cp lambda.zip s3://shani-lambda-code-bucket/lambda/lambda.zip
+aws s3 cp layer.zip s3://shani-lambda-code-bucket/layer/layer.zip
+
+
+aws lambda update-function-code \
+  --function-name s3_to_dynamodb \
+  --s3-bucket shani-lambda-code-bucket \
+  --s3-key lambda/lambda.zip
+
+
+LAYER_ARN=$(aws lambda publish-layer-version \
+    --layer-name dicom-lambda-layer \
+    --content S3Bucket=shani-lambda-code-bucket,S3Key=layer/layer.zip \
+    --query LayerVersionArn \
+    --output text)
+
+echo "LAYER_ARN=${LAYER_ARN}"
+
+
+aws lambda update-function-configuration \
+    --function-name s3_to_dynamodb \
+    --layers ${LAYER_ARN}
+
