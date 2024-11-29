@@ -1,2 +1,0 @@
-# aidoc
-aidoc interview
